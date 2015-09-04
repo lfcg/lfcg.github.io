@@ -1,0 +1,191 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<script type="text/javascript" src="code/utils.js"></script>
+		<script type="text/javascript" src="code/server.js"></script>
+		<script type="text/javascript" src="code/client.js"></script>
+		<script type="text/javascript" src="code/geometry.js"></script>
+		<script type="text/javascript" src="code/render.js"></script>
+		<script type="text/javascript" src="code/game.js"></script>
+		<script type="text/javascript" src="data/0.js"></script>
+		<script type="text/javascript" src="data/1.js"></script>
+	</head>
+	<body style="font-family:sans-serif;font-size:small;">
+		<div>Latency-Free Cloud Gaming - Simple Tech Demo, <a href="https://github.com/lfcg/lfcg.github.io" target="_blank">open-source</a>, <a href="LICENSE" target="_blank">GPL-licensed</a>, Copyright (C) 2015 A. Lorey</div>
+		<div><br></div>
+		<div><a href="javascript:void(0);" onclick="render.resize();game.start({demo:0,process:0});game.start({demo:0,process:1});">start demo #1 "first person shooter"</a></div>
+		<div><a href="javascript:void(0);" onclick="render.resize();game.start({demo:1,process:0});game.start({demo:1,process:1});">start demo #2 "racing game"</a></div>
+		<div><br></div>
+		<div style="user-select:none;-ms-user-select:none;-moz-user-select:none;-webkit-user-select:none;">
+			<input id="latency_0" type="radio" name="latency"><label for="latency_0">normal latency</label>
+			<input id="latency_1" type="radio" name="latency" checked="checked"><label for="latency_1">background color</label>
+			<input id="latency_2" type="radio" name="latency"><label for="latency_2">multiple layers</label>
+			&emsp;
+			<input id="slowmotion" type="checkbox"><label for="slowmotion">slow motion</label>
+		</div>
+		<div><br></div>
+		<div><a href="javascript:void(0);" onclick="client.capture(true);">enter mouse capture mode</a></div>
+		<div><a href="javascript:void(0);" onclick="client.capture(true);client.fullscreen();">enter full screen mode</a></div>
+		<div><br></div>
+		<div>controls: w-a-s-d, cursor keys, mouse (firefox/chrome), esc to release mouse and leave full screen mode</div>
+		<div><br></div>
+		<div>
+			<table width="100%" cellpadding="0" cellspacing="0" border="0">
+				<tr>
+					<td width="50%">
+						<div>
+							<canvas id="canvas_0" width="0" style="background-color:#000;"></canvas>
+						</div>
+					</td>
+					<td width="50%">
+						<div>
+							<canvas id="canvas_1" width="0" style="background-color:#000;"></canvas>
+						</div>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<div style="display:none;">
+			<img id="texture_ground" src="image/ground.png" />
+			<img id="texture_rock" src="image/rock.png" />
+			<img id="texture_wood" src="image/wood.png" />
+			<img id="texture_paint" src="image/paint.png" />
+			<img id="texture_arrow_left" src="image/arrow_left.png" />
+			<img id="texture_leaf" src="image/leaf.png" />
+			<img id="texture_grass" src="image/grass.png" />
+		</div>
+		<script id="vertexShader_0" type="x-shader/x-vertex">
+			// render  - passthrough/background/layers: map/cart, layers: panorama
+			// display - layers: panorama
+			uniform mat4 u_viewMatrix;
+			uniform mat4 u_cartMatrix;
+			attribute vec3 a_vertex;
+			attribute vec2 a_texCoord;
+			varying vec2 v_texCoord;
+			void main() {
+				gl_Position = u_viewMatrix * u_cartMatrix * vec4(a_vertex,1.0);
+				v_texCoord = a_texCoord;
+			}
+		</script>
+		<script id="fragmentShader_0" type="x-shader/x-fragment">
+			precision mediump float;
+			uniform sampler2D u_sampler0;
+			uniform bool u_outline;
+			varying vec2 v_texCoord;
+			void main() {
+				gl_FragColor = texture2D(u_sampler0,v_texCoord);
+				if(u_outline)
+					gl_FragColor.rgb *= gl_FragColor.a; // outline
+				if(gl_FragColor.a < 0.5) // preserve z-buffer
+					discard;
+			}
+		</script>
+		<script id="vertexShader_1" type="x-shader/x-vertex">
+			// display - server/passthrough: passthrough, layers: map/cart
+			uniform mat4 u_viewMatrix1;
+			uniform mat4 u_cartMatrix1;
+			uniform mat4 u_viewMatrix2;
+			uniform mat4 u_cartMatrix2;
+			attribute vec3 a_vertex;
+			varying vec4 v_vertex;
+			void main() {
+				v_vertex = u_viewMatrix1 * u_cartMatrix1 * vec4(a_vertex,1.0);
+				gl_Position = u_viewMatrix2 * u_cartMatrix2 * vec4(a_vertex,1.0);
+			}
+		</script>
+		<script id="fragmentShader_1" type="x-shader/x-fragment">
+			precision mediump float;
+			uniform sampler2D u_sampler0;
+			uniform vec2 u_requiredSize;
+			uniform vec2 u_blendWidth;
+			uniform vec2 u_blendWidthRec;
+			varying vec4 v_vertex;
+			void main() {
+				vec2 texCoord = (v_vertex.xy / abs(v_vertex.w) + 1.0) * u_requiredSize * 0.5; // map to rendered frame
+				texCoord += u_blendWidth; // align to blendWidth
+				vec4 fragColor = vec4(0.0);
+				gl_FragColor = fragColor;
+				vec4 texColor0 = texture2D(u_sampler0,texCoord);
+				if(v_vertex.w > 0.0 && texCoord == clamp(texCoord,vec2(0.0),u_requiredSize + u_blendWidth + u_blendWidth)) {
+					fragColor = texColor0;
+					vec2 clampCoord1 = clamp(texCoord,u_blendWidth,u_requiredSize + u_blendWidth) * u_blendWidthRec;
+					vec2 clampCoord2 = texCoord * u_blendWidthRec;
+					float dist = (clamp(distance(clampCoord1,clampCoord2),0.5,1.0) - 0.5) * 2.0;
+					gl_FragColor = fragColor;
+					gl_FragColor *= 1.0 - dist; // blend to background
+				}
+				if(fragColor.a < 0.5) // preserve z-buffer
+					discard;
+			}
+		</script>
+		<script id="vertexShader_2" type="x-shader/x-vertex">
+			// render  - background: depth
+			uniform mat4 u_viewMatrix;
+			uniform mat4 u_cartMatrix;
+			attribute vec3 a_vertex;
+			varying vec4 v_vertex;
+			void main() {
+				v_vertex = u_viewMatrix * u_cartMatrix * vec4(a_vertex,1.0);
+				gl_Position = v_vertex;
+			}
+		</script>
+		<script id="fragmentShader_2" type="x-shader/x-fragment">
+			precision mediump float;
+			varying vec4 v_vertex;
+			void main() {
+				gl_FragColor = vec4(1.0);
+				float texDepth = clamp(1000.0 / (abs(v_vertex.w) + 1000.0),0.0,1.0); // depth
+				gl_FragColor.r = texDepth;
+			}
+		</script>
+		<script id="vertexShader_3" type="x-shader/x-vertex">
+			// display - background: map/cart
+			uniform mat4 u_viewMatrix1;
+			uniform mat4 u_cartMatrix1;
+			uniform mat4 u_viewMatrix2;
+			uniform mat4 u_cartMatrix2;
+			attribute vec3 a_vertex;
+			attribute vec4 a_color;
+			varying vec4 v_vertex;
+			varying vec4 v_color;
+			void main() {
+				v_vertex = u_viewMatrix1 * u_cartMatrix1 * vec4(a_vertex,1.0);
+				gl_Position = u_viewMatrix2 * u_cartMatrix2 * vec4(a_vertex,1.0);
+				v_color = a_color;
+			}
+		</script>
+		<script id="fragmentShader_3" type="x-shader/x-fragment">
+			precision mediump float;
+			uniform sampler2D u_sampler0;
+			uniform sampler2D u_sampler1;
+			uniform vec2 u_requiredSize;
+			uniform vec2 u_blendWidth;
+			uniform vec2 u_blendWidthRec;
+			varying vec4 v_vertex;
+			varying vec4 v_color;
+			void main() {
+				vec2 texCoord = (v_vertex.xy / abs(v_vertex.w) + 1.0) * u_requiredSize * 0.5; // map to rendered frame
+				texCoord += u_blendWidth; // align to blendWidth
+				float texDepth = clamp(1000.0 / (abs(v_vertex.w) + 1000.0),0.0,1.0); // depth
+				texDepth += 0.00392156862745098; // add comparison tolerance
+				vec4 fragColor1 = v_color; // background color
+				vec4 fragColor2 = vec4(0.0); // foreground color
+				vec4 texColor0 = texture2D(u_sampler0,texCoord);
+				vec4 texColor1 = texture2D(u_sampler1,texCoord);
+				if(v_vertex.w > 0.0 && texCoord == clamp(texCoord,vec2(0.0),u_requiredSize + u_blendWidth + u_blendWidth)) {
+					if(texDepth >= texColor1.r) {
+						fragColor2 = texColor0;
+						vec2 clampCoord1 = clamp(texCoord,u_blendWidth,u_requiredSize + u_blendWidth) * u_blendWidthRec;
+						vec2 clampCoord2 = texCoord * u_blendWidthRec;
+						float dist = (clamp(distance(clampCoord1,clampCoord2),0.5,1.0) - 0.5) * 2.0;
+						fragColor1.a *= 1.0 - (1.0 - fragColor2.a) * (1.0 - dist); // preserve transparent areas
+						fragColor2 *= 1.0 - dist; // blend to background
+					}
+				}
+				fragColor1.rgb *= fragColor1.a;
+				fragColor1 *= (1.0 - fragColor2.a);
+				gl_FragColor = fragColor1 + fragColor2;
+			}
+		</script>
+	</body>
+</html>
