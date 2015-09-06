@@ -33,8 +33,8 @@ server.data[0] = {
 		g   grass
 		*   spawn/origin
 		   -5 -4 -3 -2 -1  0  1  2  3  4  5
-		 4    walwalwalwalwalwalwalwalwal
-		      walwalwalwalwalwalwalwalwal
+		 4 walwalwalwalwalwalwalwalwalwalwal
+		   walwalwalwalwalwalwalwalwalwalwal
 		 3 wal                           wal
 		   wal           g g g           wal
 		 2 wal    r     g g g g     t    wal
@@ -45,8 +45,8 @@ server.data[0] = {
 		   wal   r r       *       t t   wal
 		-1 wal    r    walwalwal    t    wal
 		   wal         walwalwalwa       wal
-		-2    walwal           lwalwalwal
-		      walwalwalw  wal  lwalwalwal
+		-2 walwalwal           lwalwalwalwal
+		   walwalwalwalw  wal  lwalwalwalwal
 		-3        alwalw  wal  lwa
 		             alw       lwa
 		-4           alwalwalwalwa

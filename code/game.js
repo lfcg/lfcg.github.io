@@ -19,8 +19,10 @@ var game = {
 	
 	start: function(ctx) {
 		ctx.game = {};
+		client.started = true;
 		ctx.startCtr = ++game.startCtr[ctx.process];
 		
+		// game state
 		ctx.viewRot = [0,0];
 		ctx.viewPos = [0,[0,server.data[1].settings.camDistance][ctx.demo],server.data[ctx.demo].settings.camHeight];
 		ctx.cartRot = 0;
@@ -30,6 +32,7 @@ var game = {
 		var steerSign = 1;
 		var nextFrame = 0;
 		
+		// determine buffer sizes, reset input state
 		if(ctx.process == 0) {
 			server.pixels[1] = Math.ceil((client.settings.bufferLength + server.settings.latency * 2) / 1000 * server.settings.framerate + 2);
 			// (buffer time + rtt latency) * server refresh rate per second + 2, round up
@@ -47,9 +50,10 @@ var game = {
 		
 		// update routine (in process context)
 		ctx.game.update = function() {
-			if(ctx.startCtr != game.startCtr[ctx.process])
+			if(ctx.startCtr != game.startCtr[ctx.process]) // terminate previous contexts
 				return;
 			
+			// configuration flags
 			render.compensationMode = 0;
 			if(document.getElementById("latency_1").checked)
 				render.compensationMode = 1;
@@ -60,7 +64,7 @@ var game = {
 				render.slowmotionMode = 1;
 			
 			if(ctx.process == 1) {
-				// state
+				// game state
 				var viewRotPrev = JSON.parse(JSON.stringify(ctx.viewRot));
 				var viewPosPrev = JSON.parse(JSON.stringify(ctx.viewPos));
 				var cartRotPrev = JSON.parse(JSON.stringify(ctx.cartRot));
@@ -131,7 +135,7 @@ var game = {
 					var cartVel3 = JSON.parse(JSON.stringify(ctx.cartPos));
 					utils.forUpto(2,function(i) { // coords
 						if(Math.abs(viewDir[i] - viewDir2[i]) > server.data[1].settings.camTrackThreshold)
-							viewDir[i] = utils.interpolate(viewDir2[i],viewDir[i],server.data[1].settings.camTrackCoeff); // camera tracking
+							viewDir[i] = utils.mix(viewDir[i],viewDir2[i],server.data[1].settings.camTrackCoeff); // camera tracking
 						ctx.cartPos[i] += cartVel2 * viewDir[i] / client.settings.framerate; // move cart
 					});
 					if(geometry.collide(ctx,ctx.cartPos,false)) {

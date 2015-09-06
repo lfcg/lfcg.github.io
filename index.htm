@@ -24,8 +24,21 @@
 			<input id="slowmotion" type="checkbox"><label for="slowmotion">slow motion</label>
 		</div>
 		<div><br></div>
+		<div style="user-select:none;">//$
+			user-select:none;
+		</div>
+		<div style="-ms-user-select:none;">//$
+			-ms-user-select:none;
+		</div>
+		<div style="-moz-user-select:none;">//$
+			-moz-user-select:none;
+		</div>
+		<div style="-webkit-user-select:none;">//$
+			-webkit-user-select:none;
+		</div>
+		<div><br></div>
 		<div><a href="javascript:void(0);" onclick="client.capture(true);">enter mouse capture mode</a></div>
-		<div><a href="javascript:void(0);" onclick="client.capture(true);client.fullscreen();">enter full screen mode</a></div>
+		<div><a href="javascript:void(0);" onclick="client.fullscreen();client.capture(true);">enter full screen mode</a></div>
 		<div><br></div>
 		<div>controls: w-a-s-d, cursor keys, mouse (firefox/chrome), esc to release mouse and leave full screen mode</div>
 		<div><br></div>

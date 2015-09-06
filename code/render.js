@@ -230,14 +230,11 @@ var render = {
 				materials: {},
 			};
 			layers[i].framebuffer = gl.createFramebuffer();
-			gl.bindFramebuffer(gl.FRAMEBUFFER,layers[i].framebuffer);
 			layers[i].depthbuffer = gl.createRenderbuffer();
-			gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,layers[i].depthbuffer);
 			layers[i].texture = gl.createTexture();
 			gl.bindTexture(gl.TEXTURE_2D,layers[i].texture);
 			gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,layers[i].texture,0);
 			for(materialName in utils.extend(server.materials,["compose"])) {
 				layers[i].materials[materialName] = {
 					buffers: [],
@@ -251,14 +248,11 @@ var render = {
 		// setup depth map
 		if(ctx.process == 1) {
 			depthmap.framebuffer = gl.createFramebuffer();
-			gl.bindFramebuffer(gl.FRAMEBUFFER,depthmap.framebuffer);
 			depthmap.depthbuffer = gl.createRenderbuffer();
-			gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,depthmap.depthbuffer);
 			depthmap.texture = gl.createTexture();
 			gl.bindTexture(gl.TEXTURE_2D,depthmap.texture);
 			gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,depthmap.texture,0);
 		}
 		
 		// update routine (in process context)
@@ -267,11 +261,33 @@ var render = {
 			
 			// resize viewport
 			if(ctx.process == 1) {
-				var fullScreenElement = document.fullScreenElement
-							|| document.msFullScreenElement
-							|| document.mozFullScreenElement
-							|| document.webkitFullScreenElement;
-				render.requiredSize = (fullScreenElement != null) ? [canvas.clientWidth,canvas.clientHeight] : render.preferredSize;
+				
+				//$
+				var test1 = [
+					[document.fullscreen,document.msFullscreen,document.mozFullscreen,document.webkitFullscreen],
+					[document.fullScreen,document.msFullScreen,document.mozFullScreen,document.webkitFullScreen],
+					[document.isFullscreen,document.msIsFullscreen,document.mozIsFullscreen,document.webkitIsFullscreen],
+					[document.isFullScreen,document.msIsFullScreen,document.mozIsFullScreen,document.webkitIsFullScreen],
+					[document.fullscreenElement,document.msFullscreenElement,document.mozFullscreenElement,document.webkitFullscreenElement],
+					[document.fullScreenElement,document.msFullScreenElement,document.mozFullScreenElement,document.webkitFullScreenElement],
+					[[canvas.clientWidth,canvas.clientHeight],canvas.getClientBoundingRect ? canvas.getClientBoundingRect() : []],
+				];
+				if(JSON.stringify(test1) != JSON.stringify(window.test2)) {
+					window.test2 = test1;
+					console.log("fullscreen A",test1[0][0],test1[0][1],test1[0][2],test1[0][3]);
+					console.log("fullScreen B",test1[1][0],test1[1][1],test1[1][2],test1[1][3]);
+					console.log("isFullscreen C",test1[2][0],test1[2][1],test1[2][2],test1[2][3]);
+					console.log("isFullScreen D",test1[3][0],test1[3][1],test1[3][2],test1[3][3]);
+					console.log("fullscreenElement E",test1[4][0],test1[4][1],test1[4][2],test1[4][3]);
+					console.log("fullScreenElement F",test1[5][0],test1[5][1],test1[5][2],test1[5][3]);
+					console.log("clientSize",test1[6][0],test1[6][1]);
+				}
+				
+				var fullscreen = !!document.fullscreen
+							|| !!document.msFullscreenElement
+							|| !!document.mozFullScreen
+							|| !!document.webkitIsFullScreen;
+				render.requiredSize = (fullscreen) ? [canvas.clientWidth,canvas.clientHeight] : render.preferredSize;
 			}
 			if(canvas.width != render.requiredSize[0]
 			|| canvas.height != render.requiredSize[1]) {
@@ -298,10 +314,13 @@ var render = {
 					
 					// resize framebuffers
 					utils.forUpto(server.settings.layerCount,function(i) { // compose layers
-						gl.bindRenderbuffer(gl.RENDERBUFFER,layers[i].depthbuffer);
-						gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,render.framebufferSize[0],render.framebufferSize[1]);
 						gl.bindTexture(gl.TEXTURE_2D,layers[i].texture);
 						gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,render.framebufferSize[0],render.framebufferSize[1],0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+						gl.bindRenderbuffer(gl.RENDERBUFFER,layers[i].depthbuffer);
+						gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,render.framebufferSize[0],render.framebufferSize[1]);
+						gl.bindFramebuffer(gl.FRAMEBUFFER,layers[i].framebuffer);
+						gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,layers[i].texture,0);
+						gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,layers[i].depthbuffer);
 						gl.bindRenderbuffer(gl.RENDERBUFFER,null);
 					});
 					
@@ -330,10 +349,13 @@ var render = {
 				|| client.frames[2].framebufferSize[0] != render.depthmapSize[0]
 				|| client.frames[2].framebufferSize[1] != render.depthmapSize[1]) {
 					render.depthmapSize = [client.frames[2].framebufferSize[0],client.frames[2].framebufferSize[1]];
-					gl.bindRenderbuffer(gl.RENDERBUFFER,depthmap.depthbuffer);
-					gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,render.framebufferSize[0],render.framebufferSize[1]);
 					gl.bindTexture(gl.TEXTURE_2D,depthmap.texture);
 					gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,render.framebufferSize[0],render.framebufferSize[1],0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+					gl.bindRenderbuffer(gl.RENDERBUFFER,depthmap.depthbuffer);
+					gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,render.framebufferSize[0],render.framebufferSize[1]);
+					gl.bindFramebuffer(gl.FRAMEBUFFER,depthmap.framebuffer);
+					gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,depthmap.texture,0);
+					gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,depthmap.depthbuffer);
 					gl.bindRenderbuffer(gl.RENDERBUFFER,null);
 				}
 			}
@@ -571,9 +593,9 @@ var render = {
 			
 			// store pixel buffers
 			if(ctx.process == 0) {
-				server.pixels[2] = (server.pixels[2] + 1) % server.pixels[1];
+				server.pixels[2] = utils.incMod(server.pixels[2],server.pixels[1]);
 				if(client.frames[2] && server.pixels[2] == client.frames[2].pixels) // pin frame
-					server.pixels[2] = (server.pixels[2] + 1) % server.pixels[1];
+					server.pixels[2] = utils.incMod(server.pixels[2],server.pixels[1]);
 				utils.forUpto(layerCount,function(i) { // compose layers
 					gl.bindFramebuffer(gl.FRAMEBUFFER,layers[i].framebuffer);
 					gl.readPixels(0,0,render.framebufferSize[0],render.framebufferSize[1],gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][server.pixels[2]][i]);

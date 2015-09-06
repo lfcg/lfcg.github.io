@@ -120,7 +120,7 @@ var server = {
 	},
 	data: [], // data per demo mode
 	
-	pixels: [[],0,0], // pixel buffers per layer, preallocated
+	pixels: [[],0,0], // pixel buffers, preallocated: list,length,cursor
 	receive_state: function() {},
 	register_receive_state: function(ctx) {
 		server.receive_state = function(msg) {

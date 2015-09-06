@@ -119,6 +119,8 @@ var geometry = {
 			[[0,2],[1,1]],
 			[[0,1],[1,1]],
 		];
+		
+		// panorama geometry
 		utils.forUpto(6,function(i) { // faces
 			var quad = faceQuads[i];
 			var vertices = JSON.parse(JSON.stringify([
@@ -141,6 +143,8 @@ var geometry = {
 			];
 			geometry.panoramaGeometry.push([vertices,texCoords]);
 		});
+		
+		// map geometry
 		utils.forEach(server.data[ctx.demo].map,function(instance) {
 			var group = null;
 			

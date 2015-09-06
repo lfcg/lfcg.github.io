@@ -47,23 +47,26 @@ var utils = {
 	deg2rad: function(deg) {
 		return utils.normalizeRad(deg * (Math.PI/180));
 	},
-	interpolate: function(val1,val2,weight) {
-		return val1 * weight + val2 * (1 - weight);
+	mix: function(val1,val2,weight) {
+		return val1 * (1 - weight) + val2 * weight;
+	},
+	incMod: function(val,mod) {
+		return (val + 1) % mod;
 	},
 	
 	vectorAbsolute: function(vec,dim) {
-		var sum = 0;
+		var dot = 0;
 		utils.forUpto(dim || vec.length,function(i) { // coords
-			sum += vec[i] * vec[i];
+			dot += vec[i] * vec[i];
 		});
-		return Math.sqrt(sum);
+		return Math.sqrt(dot);
 	},
 	vectorDifference: function(vec1,vec2) {
-		var difference = [];
+		var diff = [];
 		utils.forUpto(vec1.length,function(i) { // coords
-			difference[i] = vec1[i] - vec2[i];
+			diff[i] = vec1[i] - vec2[i];
 		});
-		return difference;
+		return diff;
 	},
 	matrixProduct: function(mat1,mat2) { // 4x4 only
 		utils.forUpto(4,function(i) { // result rows
@@ -102,6 +105,6 @@ var utils = {
 	},
 	
 	currentTime: function() {
-		return (performance) ? performance.now() : Date.now();
+		return (performance || Date).now();
 	},
 };
