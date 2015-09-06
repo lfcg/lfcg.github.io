@@ -57,20 +57,12 @@ var client = {
 		canvas.onmousemove = function(e) {};
 		if(mouse) {
 			try {
-				
-				//$
-				console.log("requestPointerLock",canvas.requestPointerLock,canvas.msRequestPointerLock,canvas.mozRequestPointerLock,canvas.webkitRequestPointerLock);
-				
 				canvas.requestPointerLock = canvas.requestPointerLock
 							|| canvas.msRequestPointerLock
 							|| canvas.mozRequestPointerLock
 							|| canvas.webkitRequestPointerLock;
 				canvas.requestPointerLock();
 				canvas.onmousemove = function(e) {
-					
-					//$
-					console.log("movement",[e.movementX,e.movementY],[e.msMovementX,e.msMovementY],[e.mozMovementX,e.mozMovementY],[e.webkitMovementX,e.webkitMovementY]);
-					
 					client.pointer[0] += e.movementX
 								|| e.msMovementX
 								|| e.mozMovementX
@@ -91,14 +83,10 @@ var client = {
 		
 		try {
 			var canvas = document.getElementById("canvas_1");
-			
-			//$
-			console.log("requestFullscreen A",canvas.requestFullscreen,canvas.msRequestFullscreen,canvas.mozRequestFullscreen,canvas.webkitRequestFullscreen);
-			console.log("requestFullScreen B",canvas.requestFullScreen,canvas.msRequestFullScreen,canvas.mozRequestFullScreen,canvas.webkitRequestFullScreen);
-			
 			canvas.requestFullscreen = canvas.requestFullscreen
 						|| canvas.msRequestFullscreen
 						|| canvas.mozRequestFullScreen
+						|| canvas.webkitRequestFullscreen
 						|| canvas.webkitRequestFullScreen;
 			canvas.requestFullscreen();
 		} catch(e) {}

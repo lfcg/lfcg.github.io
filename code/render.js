@@ -263,32 +263,12 @@ var render = {
 			
 			// resize viewport
 			if(ctx.process == 1) {
-				
-				//$
-				var test1 = [
-					[document.fullscreen,document.msFullscreen,document.mozFullscreen,document.webkitFullscreen],
-					[document.fullScreen,document.msFullScreen,document.mozFullScreen,document.webkitFullScreen],
-					[document.isFullscreen,document.msIsFullscreen,document.mozIsFullscreen,document.webkitIsFullscreen],
-					[document.isFullScreen,document.msIsFullScreen,document.mozIsFullScreen,document.webkitIsFullScreen],
-					[],
-					[],
-					[[canvas.clientWidth,canvas.clientHeight],[screen.width,screen.height],canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : []],
-				];
-				if(JSON.stringify(test1) != JSON.stringify(window.test2)) {
-					window.test2 = test1;
-					console.log("fullscreen A",test1[0][0],test1[0][1],test1[0][2],test1[0][3]);
-					console.log("fullScreen B",test1[1][0],test1[1][1],test1[1][2],test1[1][3]);
-					console.log("isFullscreen C",test1[2][0],test1[2][1],test1[2][2],test1[2][3]);
-					console.log("isFullScreen D",test1[3][0],test1[3][1],test1[3][2],test1[3][3]);
-					console.log("fullscreenElement E",document.fullscreenElement,document.msFullscreenElement,document.mozFullscreenElement,document.webkitFullscreenElement);
-					console.log("fullScreenElement F",document.fullScreenElement,document.msFullScreenElement,document.mozFullScreenElement,document.webkitFullScreenElement);
-					console.log("clientSize",test1[6][0],test1[6][1]);
-				}
-				
 				var fullscreen = !!document.fullscreen
 							|| !!document.msFullscreenElement
 							|| !!document.mozFullScreen
-							|| !!document.webkitIsFullScreen;
+							|| !!document.mozFullScreenElement
+							|| !!document.webkitIsFullScreen
+							|| !!document.webkitFullscreenElement;
 				var fullscreenSize = [canvas.clientWidth,canvas.clientHeight];
 				if(fullscreenSize[0] <= render.preferredSize[0])
 					fullscreenSize[0] = screen.width;
