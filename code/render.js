@@ -79,6 +79,8 @@ var render = {
 		var canvas = document.getElementById("canvas_" + ctx.process);
 		var gl = canvas.getContext("webgl",{alpha:false,antialias:false});
 		if(!gl)
+			gl = canvas.getContext("experimental-webgl",{alpha:false,antialias:false});
+		if(!gl)
 			throw new Error("");
 		
 		gl.enable(gl.DEPTH_TEST);
@@ -268,9 +270,9 @@ var render = {
 					[document.fullScreen,document.msFullScreen,document.mozFullScreen,document.webkitFullScreen],
 					[document.isFullscreen,document.msIsFullscreen,document.mozIsFullscreen,document.webkitIsFullscreen],
 					[document.isFullScreen,document.msIsFullScreen,document.mozIsFullScreen,document.webkitIsFullScreen],
-					[document.fullscreenElement,document.msFullscreenElement,document.mozFullscreenElement,document.webkitFullscreenElement],
-					[document.fullScreenElement,document.msFullScreenElement,document.mozFullScreenElement,document.webkitFullScreenElement],
-					[[canvas.clientWidth,canvas.clientHeight],canvas.getClientBoundingRect ? canvas.getClientBoundingRect() : []],
+					[],
+					[],
+					[[canvas.clientWidth,canvas.clientHeight],[screen.width,screen.height],canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : []],
 				];
 				if(JSON.stringify(test1) != JSON.stringify(window.test2)) {
 					window.test2 = test1;
@@ -278,8 +280,8 @@ var render = {
 					console.log("fullScreen B",test1[1][0],test1[1][1],test1[1][2],test1[1][3]);
 					console.log("isFullscreen C",test1[2][0],test1[2][1],test1[2][2],test1[2][3]);
 					console.log("isFullScreen D",test1[3][0],test1[3][1],test1[3][2],test1[3][3]);
-					console.log("fullscreenElement E",test1[4][0],test1[4][1],test1[4][2],test1[4][3]);
-					console.log("fullScreenElement F",test1[5][0],test1[5][1],test1[5][2],test1[5][3]);
+					console.log("fullscreenElement E",document.fullscreenElement,document.msFullscreenElement,document.mozFullscreenElement,document.webkitFullscreenElement);
+					console.log("fullScreenElement F",document.fullScreenElement,document.msFullScreenElement,document.mozFullScreenElement,document.webkitFullScreenElement);
 					console.log("clientSize",test1[6][0],test1[6][1]);
 				}
 				
@@ -287,7 +289,12 @@ var render = {
 							|| !!document.msFullscreenElement
 							|| !!document.mozFullScreen
 							|| !!document.webkitIsFullScreen;
-				render.requiredSize = (fullscreen) ? [canvas.clientWidth,canvas.clientHeight] : render.preferredSize;
+				var fullscreenSize = [canvas.clientWidth,canvas.clientHeight];
+				if(fullscreenSize[0] <= render.preferredSize[0])
+					fullscreenSize[0] = screen.width;
+				if(fullscreenSize[1] <= render.preferredSize[1])
+					fullscreenSize[1] = screen.height;
+				render.requiredSize = (fullscreen) ? fullscreenSize : render.preferredSize;
 			}
 			if(canvas.width != render.requiredSize[0]
 			|| canvas.height != render.requiredSize[1]) {
