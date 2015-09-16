@@ -37,12 +37,12 @@ var game = {
 			// buffer time * server refresh rate per second, round down
 			server.receive_frame = function() {};
 			geometry.panoramaGeometry = [];
-			render.blendWidth = [];
-			render.renderSize = [];
-			render.framebufferSize = [];
+			render.blendWidth = [1,1];
+			render.renderSize = [1,1];
+			render.framebufferSize = [1,1];
 			render.depthmapSize = null;
-			render.panoramaSize = [];
-			render.fieldOfView = [[],[]];
+			render.panoramaSize = [1,1];
+			render.fieldOfView = [[utils.deg2rad(90),utils.deg2rad(90)],[utils.deg2rad(90),utils.deg2rad(90)]];
 			render.compensationMode = 1;
 			render.slowmotionMode = 0;
 		}
@@ -224,7 +224,7 @@ var game = {
 			// priorize client refresh
 			if(ctx.process == 1 && server.requestFrame) {
 				server.requestFrame = false;
-				window.setTimeout(server.update,0);
+				server.update();
 			}
 			
 			// schedule next frame
@@ -246,7 +246,7 @@ var game = {
 		}
 		else {
 			client.capture(false);
-			window.setTimeout(ctx.game.update,0);
+			ctx.game.update();
 		}
 	},
 	predictState: function(prev,next,rad) {
