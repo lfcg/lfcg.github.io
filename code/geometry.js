@@ -33,7 +33,7 @@ var geometry = {
 		[ 1,-1, 0],
 		[-1,-1, 0],
 	],
-	panoramaGeometry: [],
+	panoramaGeometry: null,
 	rotateXMatrix: function(angle) {
 		var cos = Math.cos(angle);
 		var sin = Math.sin(angle);
@@ -73,8 +73,6 @@ var geometry = {
 	},
 	
 	loadGeometry: function(ctx,materials,groups) {
-		geometry.panoramaGeometry = [];
-		
 		/*
 		faces
 		      _______

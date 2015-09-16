@@ -19,10 +19,44 @@ var game = {
 	
 	start: function(ctx) {
 		ctx.game = {};
-		client.started = true;
 		ctx.startCtr = ++game.startCtr[ctx.process];
 		
-		// game state
+		// reset static properties, determine buffer sizes
+		if(ctx.process == 0) {
+			server.requestFrame = true;
+			server.update = function() {};
+			server.pixels = [[],0,0];
+			server.pixels[1] = Math.ceil((client.settings.bufferLength + server.settings.latency * 2) / 1000 * server.settings.framerate + 2);
+			// (buffer time + rtt latency) * server refresh rate per second + 2, round up
+			server.receive_state = function() {};
+			client.started = false;
+			client.control = [[false,false],[false,false],[false,false],[false,false]];
+			client.pointer = [0,0];
+			client.frames = [[],0,null,0];
+			client.frames[1] = Math.floor(client.settings.bufferLength / 1000 * server.settings.framerate);
+			// buffer time * server refresh rate per second, round down
+			server.receive_frame = function() {};
+			geometry.panoramaGeometry = [];
+			render.blendWidth = [];
+			render.renderSize = [];
+			render.framebufferSize = [];
+			render.depthmapSize = null;
+			render.panoramaSize = [];
+			render.fieldOfView = [[],[]];
+			render.compensationMode = 1;
+			render.slowmotionMode = 0;
+		}
+		
+		// register message handlers
+		if(ctx.process == 0) {
+			server.register_receive_state(ctx);
+		}
+		else {
+			client.started = true;
+			client.register_receive_frame(ctx);
+		}
+		
+		// reset game state
 		ctx.viewRot = [0,0];
 		ctx.viewPos = [0,[0,server.data[1].settings.camDistance][ctx.demo],server.data[ctx.demo].settings.camHeight];
 		ctx.cartRot = 0;
@@ -32,20 +66,6 @@ var game = {
 		var steerSign = 1;
 		var nextFrame = 0;
 		
-		// determine buffer sizes, reset input state
-		if(ctx.process == 0) {
-			server.pixels[1] = Math.ceil((client.settings.bufferLength + server.settings.latency * 2) / 1000 * server.settings.framerate + 2);
-			// (buffer time + rtt latency) * server refresh rate per second + 2, round up
-			server.register_receive_state(ctx);
-		}
-		else {
-			client.control = [[false,false],[false,false],[false,false],[false,false]];
-			client.pointer = [0,0];
-			client.frames[1] = Math.floor(client.settings.bufferLength / 1000 * server.settings.framerate);
-			// buffer time * server refresh rate per second, round down
-			client.register_receive_frame(ctx);
-		}
-		
 		render.start(ctx);
 		
 		// update routine (in process context)
@@ -53,17 +73,17 @@ var game = {
 			if(ctx.startCtr != game.startCtr[ctx.process]) // terminate previous contexts
 				return;
 			
-			// configuration flags
-			render.compensationMode = 0;
-			if(document.getElementById("latency_1").checked)
-				render.compensationMode = 1;
-			else if(document.getElementById("latency_2").checked)
-				render.compensationMode = 2;
-			render.slowmotionMode = 0
-			if(document.getElementById("slowmotion").checked)
-				render.slowmotionMode = 1;
-			
 			if(ctx.process == 1) {
+				// configuration flags
+				render.compensationMode = 0;
+				if(document.getElementById("latency_1").checked)
+					render.compensationMode = 1;
+				else if(document.getElementById("latency_2").checked)
+					render.compensationMode = 2;
+				render.slowmotionMode = 0
+				if(document.getElementById("slowmotion").checked)
+					render.slowmotionMode = 1;
+				
 				// game state
 				var viewRotPrev = JSON.parse(JSON.stringify(ctx.viewRot));
 				var viewPosPrev = JSON.parse(JSON.stringify(ctx.viewPos));
@@ -201,17 +221,33 @@ var game = {
 			if(ctx.process == 0)
 				server.send_frame(ctx);
 			
-			{ // always
-				var time = utils.currentTime();
-				nextFrame = Math.max(nextFrame + 1000 / [server,client][ctx.process].settings.framerate * [1,server.settings.slowmotion][render.slowmotionMode],time);
+			// priorize client refresh
+			if(ctx.process == 1 && server.requestFrame) {
+				server.requestFrame = false;
+				window.setTimeout(server.update,0);
+			}
+			
+			// schedule next frame
+			var time = utils.currentTime();
+			nextFrame = Math.max(nextFrame + 1000 / [server,client][ctx.process].settings.framerate * [1,server.settings.slowmotion][render.slowmotionMode],time);
+			if(ctx.process == 0) {
+				setTimeout(function() {
+					server.requestFrame = true;
+				},nextFrame - time);
+			}
+			else {
 				window.setTimeout(ctx.game.update,nextFrame - time);
 			}
 		}
 		
 		// enter game loop
-		window.setTimeout(ctx.game.update,[0,server.settings.framerate][ctx.process]);
-		if(ctx.process == 1)
+		if(ctx.process == 0) {
+			server.update = ctx.game.update;
+		}
+		else {
 			client.capture(false);
+			window.setTimeout(ctx.game.update,0);
+		}
 	},
 	predictState: function(prev,next,rad) {
 		var pred = [];

@@ -92,7 +92,7 @@ var client = {
 		} catch(e) {}
 	},
 	
-	frames: [[],0,null,0], // received frames: list,length,selected,time
+	frames: null, // received frames: list,length,selected,time
 	send_state: function(ctx) {
 		var msg = JSON.parse(JSON.stringify({
 			startCtr: ctx.startCtr,
@@ -106,7 +106,7 @@ var client = {
 			server.receive_state(msg);
 		},server.settings.latency * [1,server.settings.slowmotion][render.slowmotionMode]);
 	},
-	receive_frame: function() {},
+	receive_frame: null,
 	register_receive_frame: function(ctx) {
 		client.receive_frame = function(msg) {
 			if(msg.startCtr != game.startCtr[ctx.process]

@@ -15,14 +15,14 @@
 */
 
 var render = {
-	preferredSize: [],    // w = pageSize.w / 2; h = w * 3 / 4;
-	requiredSize: [],     // fullscreen ? screenSize : preferredSize
-	blendWidth: [],       // requiredSize * min((cot(preferredFieldOfView / 2) - 1) / 2,preferredBlendWidth)
-	renderSize: [],       // requiredSize + blendWidth * 2
-	framebufferSize: [],  // 2 ^ ceil(log(renderSize))
-	depthmapSize: null,   // framebufferSize (update client)
-	panoramaSize: [],     // w = framebufferSize.w / 3; h = framebufferSize.h / 2;
-	fieldOfView: [[],[]], // renderSize, requiredSize
+	preferredSize: [],     // w = pageSize.w / 2; h = w * 3 / 4;
+	requiredSize: [],      // fullscreen ? screenSize : preferredSize
+	blendWidth: null,      // requiredSize * min((cot(preferredFieldOfView / 2) - 1) / 2,preferredBlendWidth)
+	renderSize: null,      // requiredSize + blendWidth * 2
+	framebufferSize: null, // 2 ^ ceil(log(renderSize))
+	depthmapSize: null,    // framebufferSize (update client)
+	panoramaSize: null,    // w = framebufferSize.w / 3; h = framebufferSize.h / 2;
+	fieldOfView: null,     // renderSize, requiredSize
 	compensationMode: null,
 	slowmotionMode: null,
 	
@@ -36,14 +36,6 @@ var render = {
 	},
 	start: function(ctx) {
 		ctx.render = {};
-		render.blendWidth = [];
-		render.renderSize = [];
-		render.framebufferSize = [];
-		render.depthmapSize = null;
-		render.panoramaSize = [];
-		render.fieldOfView = [[],[]];
-		render.compensationMode = null;
-		render.slowmotionMode = null;
 		
 		var materials = {/*
 		    materialName: {
@@ -131,72 +123,42 @@ var render = {
 			utils.forUpto(uniforms[i].length,function(j) { // uniforms
 				programs[i].uniforms[j] = gl.getUniformLocation(programs[i].program,uniforms[i][j]);
 			});
+			programs[i].init = function(parameters) {
+				{ // always
+					gl.uniformMatrix4fv(programs[i].uniforms[0],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
+					gl.uniformMatrix4fv(programs[i].uniforms[1],false,utils.flattenMatrix(geometry.identityMatrix));
+				}
+				if(i == 0) {
+					gl.uniform1i(programs[i].uniforms[2],parameters[1]);
+				}
+				else if(i == 1 || i == 3) {
+					gl.uniformMatrix4fv(programs[i].uniforms[2],false,utils.flattenMatrix((parameters[1] || geometry.identityMatrix)));
+					gl.uniformMatrix4fv(programs[i].uniforms[3],false,utils.flattenMatrix(geometry.identityMatrix));
+					gl.uniform2fv(programs[i].uniforms[4],[render.requiredSize[0] / render.framebufferSize[0],render.requiredSize[1] / render.framebufferSize[1]]);
+					gl.uniform2fv(programs[i].uniforms[5],[render.blendWidth[0] / render.framebufferSize[0],render.blendWidth[1] / render.framebufferSize[1]]);
+					gl.uniform2fv(programs[i].uniforms[6],[render.framebufferSize[0] / render.blendWidth[0],render.framebufferSize[1] / render.blendWidth[1]]);
+				}
+			};
+			programs[i].change = function(parameters) {
+				{ // always
+					gl.uniformMatrix4fv(programs[i].uniforms[1],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
+				}
+				if(i == 1 || i == 3) {
+					gl.uniformMatrix4fv(programs[i].uniforms[3],false,utils.flattenMatrix((parameters[1] || geometry.identityMatrix)));
+				}
+			};
+			programs[i].draw = function(j,materialName) {
+				{ // always
+					gl.bindBuffer(gl.ARRAY_BUFFER,layers[j].materials[materialName].buffers[0]);
+					gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
+				}
+				if(i == 0 || i == 3) {
+					gl.bindBuffer(gl.ARRAY_BUFFER,layers[j].materials[materialName].buffers[1]);
+					gl.vertexAttribPointer(1,[2,0,0,4][i],gl.FLOAT,false,0,0);
+				}
+				gl.drawArrays(gl.TRIANGLES,0,layers[j].materials[materialName].faceCount * 6);
+			};
 		});
-		programs[0].init = function(parameters) {
-			gl.uniformMatrix4fv(programs[0].uniforms[0],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
-			gl.uniformMatrix4fv(programs[0].uniforms[1],false,utils.flattenMatrix(geometry.identityMatrix));
-			gl.uniform1i(programs[0].uniforms[2],parameters[1]);
-		};
-		programs[1].init = function(parameters) {
-			gl.uniformMatrix4fv(programs[1].uniforms[0],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
-			gl.uniformMatrix4fv(programs[1].uniforms[1],false,utils.flattenMatrix(geometry.identityMatrix));
-			gl.uniformMatrix4fv(programs[1].uniforms[2],false,utils.flattenMatrix((parameters[1] || geometry.identityMatrix)));
-			gl.uniformMatrix4fv(programs[1].uniforms[3],false,utils.flattenMatrix(geometry.identityMatrix));
-			gl.uniform2fv(programs[1].uniforms[4],[render.requiredSize[0] / render.framebufferSize[0],render.requiredSize[1] / render.framebufferSize[1]]);
-			gl.uniform2fv(programs[1].uniforms[5],[render.blendWidth[0] / render.framebufferSize[0],render.blendWidth[1] / render.framebufferSize[1]]);
-			gl.uniform2fv(programs[1].uniforms[6],[render.framebufferSize[0] / render.blendWidth[0],render.framebufferSize[1] / render.blendWidth[1]]);
-		};
-		programs[2].init = function(parameters) {
-			gl.uniformMatrix4fv(programs[2].uniforms[0],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
-			gl.uniformMatrix4fv(programs[2].uniforms[1],false,utils.flattenMatrix(geometry.identityMatrix));
-		};
-		programs[3].init = function(parameters) {
-			gl.uniformMatrix4fv(programs[3].uniforms[0],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
-			gl.uniformMatrix4fv(programs[3].uniforms[1],false,utils.flattenMatrix(geometry.identityMatrix));
-			gl.uniformMatrix4fv(programs[3].uniforms[2],false,utils.flattenMatrix((parameters[1] || geometry.identityMatrix)));
-			gl.uniformMatrix4fv(programs[3].uniforms[3],false,utils.flattenMatrix(geometry.identityMatrix));
-			gl.uniform2fv(programs[3].uniforms[4],[render.requiredSize[0] / render.framebufferSize[0],render.requiredSize[1] / render.framebufferSize[1]]);
-			gl.uniform2fv(programs[3].uniforms[5],[render.blendWidth[0] / render.framebufferSize[0],render.blendWidth[1] / render.framebufferSize[1]]);
-			gl.uniform2fv(programs[3].uniforms[6],[render.framebufferSize[0] / render.blendWidth[0],render.framebufferSize[1] / render.blendWidth[1]]);
-		};
-		programs[0].change = function(parameters) {
-			gl.uniformMatrix4fv(programs[0].uniforms[1],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
-		};
-		programs[1].change = function(parameters) {
-			gl.uniformMatrix4fv(programs[1].uniforms[1],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
-			gl.uniformMatrix4fv(programs[1].uniforms[3],false,utils.flattenMatrix((parameters[1] || geometry.identityMatrix)));
-		};
-		programs[2].change = function(parameters) {
-			gl.uniformMatrix4fv(programs[2].uniforms[1],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
-		};
-		programs[3].change = function(parameters) {
-			gl.uniformMatrix4fv(programs[3].uniforms[1],false,utils.flattenMatrix((parameters[0] || geometry.identityMatrix)));
-			gl.uniformMatrix4fv(programs[3].uniforms[3],false,utils.flattenMatrix((parameters[1] || geometry.identityMatrix)));
-		};
-		programs[0].draw = function(i,materialName) {
-			gl.bindBuffer(gl.ARRAY_BUFFER,layers[i].materials[materialName].buffers[0]);
-			gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
-			gl.bindBuffer(gl.ARRAY_BUFFER,layers[i].materials[materialName].buffers[1]);
-			gl.vertexAttribPointer(1,2,gl.FLOAT,false,0,0);
-			gl.drawArrays(gl.TRIANGLES,0,layers[i].materials[materialName].faceCount * 6);
-		};
-		programs[1].draw = function(i,materialName) {
-			gl.bindBuffer(gl.ARRAY_BUFFER,layers[i].materials[materialName].buffers[0]);
-			gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
-			gl.drawArrays(gl.TRIANGLES,0,layers[i].materials[materialName].faceCount * 6);
-		};
-		programs[2].draw = function(i,materialName) {
-			gl.bindBuffer(gl.ARRAY_BUFFER,layers[i].materials[materialName].buffers[0]);
-			gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
-			gl.drawArrays(gl.TRIANGLES,0,layers[i].materials[materialName].faceCount * 6);
-		};
-		programs[3].draw = function(i,materialName) {
-			gl.bindBuffer(gl.ARRAY_BUFFER,layers[i].materials[materialName].buffers[0]);
-			gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);
-			gl.bindBuffer(gl.ARRAY_BUFFER,layers[i].materials[materialName].buffers[1]);
-			gl.vertexAttribPointer(1,4,gl.FLOAT,false,0,0);
-			gl.drawArrays(gl.TRIANGLES,0,layers[i].materials[materialName].faceCount * 6);
-		};
 		var useProgram = function(program,parameters) {
 			gl.useProgram(programs[program].program);
 			utils.forUpto(attribCount,function(i) { // attribs
@@ -285,7 +247,7 @@ var render = {
 				canvas.height = render.requiredSize[1];
 				gl.viewport(0,0,render.requiredSize[0],render.requiredSize[1]);
 				if(ctx.process == 0) {
-					// determine constant properties
+					// update static properties
 					var tan = Math.tan(server.data[ctx.demo].settings.fieldOfView / 2);
 					var prepareBlendWidth = Math.min((1 / tan - 1) / 2,server.settings.preferredBlendWidth);
 					utils.forUpto(2,function(i) { // coords
@@ -523,8 +485,6 @@ var render = {
 									programs[2].change([cartMatrices[3]]); // cart layer
 								var materialName = "compose";
 								programs[2].draw(i,materialName);
-								if(i == 1)
-									programs[2].change([null]); // cart layer
 							});
 							gl.viewport(0,0,render.requiredSize[0],render.requiredSize[1]);
 						}
@@ -542,8 +502,6 @@ var render = {
 									programs[3].change([cartMatrices[1],cartMatrices[2]]); // cart layer
 								var materialName = "compose";
 								programs[3].draw(i,materialName);
-								if(i == 1)
-									programs[3].change([null,null]); // cart layer
 							});
 						}
 					},
@@ -569,8 +527,6 @@ var render = {
 									var materialName = "compose";
 									gl.bindTexture(gl.TEXTURE_2D,layers[i].texture);
 									programs[1].draw(i,materialName);
-									if(ctx.demo == 1 && i == layerCount - 1)
-										programs[1].change([null,null]); // cart layer
 								}
 							});
 						}

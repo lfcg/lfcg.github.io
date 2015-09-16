@@ -120,8 +120,10 @@ var server = {
 	},
 	data: [], // data per demo mode
 	
-	pixels: [[],0,0], // pixel buffers, preallocated: list,length,cursor
-	receive_state: function() {},
+	requestFrame: null,
+	update: null,
+	pixels: null, // pixel buffers, preallocated: list,length,cursor
+	receive_state: null,
 	register_receive_state: function(ctx) {
 		server.receive_state = function(msg) {
 			if(msg.startCtr != game.startCtr[ctx.process]) // discard previous contexts
