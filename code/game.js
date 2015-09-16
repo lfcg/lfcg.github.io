@@ -35,7 +35,7 @@ var game = {
 			client.frames = [[],0,null,0];
 			client.frames[1] = Math.floor(client.settings.bufferLength / 1000 * server.settings.framerate);
 			// buffer time * server refresh rate per second, round down
-			server.receive_frame = function() {};
+			client.receive_frame = function() {};
 			geometry.panoramaGeometry = [];
 			render.blendWidth = [1,1];
 			render.renderSize = [1,1];
