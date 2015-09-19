@@ -52,7 +52,7 @@ var server = {
 		grass: {
 			color: utils.bytes2floats([32,96,0,160]),
 			mirror: true,
-			cull: [1,3,4,5],
+			cull: [4,5],
 		},
 	},
 	models: {
@@ -126,7 +126,7 @@ var server = {
 	receive_state: null,
 	register_receive_state: function(ctx) {
 		server.receive_state = function(msg) {
-			if(msg.startCtr != game.startCtr[ctx.process]) // discard previous contexts
+			if(msg.startCtr != game.startCtr[1]) // discard previous contexts
 				return;
 			
 			ctx.viewRot = msg.viewRot;
@@ -140,6 +140,7 @@ var server = {
 			startCtr: ctx.startCtr,
 			time: utils.currentTime(),
 			requiredSize: render.requiredSize,
+			renderSize: render.renderSize,
 			framebufferSize: render.framebufferSize,
 			compensationMode: render.compensationMode,
 			viewRot: ctx.viewRot,

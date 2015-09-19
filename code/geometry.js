@@ -28,9 +28,9 @@ var geometry = {
 		[0,0,0,1],
 	],
 	passthroughGeometry: [
-		[-1, 1, 0],
-		[ 1, 1, 0],
 		[ 1,-1, 0],
+		[ 1, 1, 0],
+		[-1, 1, 0],
 		[-1,-1, 0],
 	],
 	panoramaGeometry: null,
@@ -122,10 +122,10 @@ var geometry = {
 		utils.forUpto(6,function(i) { // faces
 			var quad = faceQuads[i];
 			var vertices = JSON.parse(JSON.stringify([
-				vertPos[quad[0]],
-				vertPos[quad[1]],
-				vertPos[quad[2]],
 				vertPos[quad[3]],
+				vertPos[quad[2]],
+				vertPos[quad[1]],
+				vertPos[quad[0]],
 			]));
 			utils.forUpto(4,function(j) { // vertices
 				utils.forUpto(3,function(k) { // coords
@@ -134,10 +134,10 @@ var geometry = {
 			});
 			var texOff = [(i % 3),Math.floor(i / 3)];
 			var texCoords = [
-				[texOff[0] + 0,texOff[1] + 0],
-				[texOff[0] + 0,texOff[1] + 1],
-				[texOff[0] + 1,texOff[1] + 1],
 				[texOff[0] + 1,texOff[1] + 0],
+				[texOff[0] + 1,texOff[1] + 1],
+				[texOff[0] + 0,texOff[1] + 1],
+				[texOff[0] + 0,texOff[1] + 0],
 			];
 			geometry.panoramaGeometry.push([vertices,texCoords]);
 		});
@@ -458,10 +458,10 @@ var geometry = {
 									0.5 / render.framebufferSize[1],
 								];
 								face[1] = [
-									[face[1][0][0] * stride[0] + pixelOff[0],face[1][0][1] * stride[1] + pixelOff[1]],
-									[face[1][1][0] * stride[0] + pixelOff[0],face[1][1][1] * stride[1] - pixelOff[1]],
-									[face[1][2][0] * stride[0] - pixelOff[0],face[1][2][1] * stride[1] - pixelOff[1]],
-									[face[1][3][0] * stride[0] - pixelOff[0],face[1][3][1] * stride[1] + pixelOff[1]],
+									[face[1][0][0] * stride[0] - pixelOff[0],face[1][0][1] * stride[1] + pixelOff[1]],
+									[face[1][1][0] * stride[0] - pixelOff[0],face[1][1][1] * stride[1] - pixelOff[1]],
+									[face[1][2][0] * stride[0] + pixelOff[0],face[1][2][1] * stride[1] - pixelOff[1]],
+									[face[1][3][0] * stride[0] + pixelOff[0],face[1][3][1] * stride[1] + pixelOff[1]],
 								];
 								layers[i].materials[materialName].faceCount++;
 								geometry.pushData(data[0],face[0]);

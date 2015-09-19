@@ -20,7 +20,7 @@ var render = {
 	blendWidth: null,      // requiredSize * min((cot(preferredFieldOfView / 2) - 1) / 2,preferredBlendWidth)
 	renderSize: null,      // requiredSize + blendWidth * 2
 	framebufferSize: null, // 2 ^ ceil(log(renderSize))
-	depthmapSize: null,    // framebufferSize (update client)
+	depthmapSize: null,    // framebufferSize (update after resize)
 	panoramaSize: null,    // w = framebufferSize.w / 3; h = framebufferSize.h / 2;
 	fieldOfView: null,     // renderSize, requiredSize
 	compensationMode: null,
@@ -221,7 +221,7 @@ var render = {
 		
 		// update routine (in process context)
 		ctx.render.update = function() {
-			var layerCount = [1,[1,2][ctx.process],server.settings.layerCount][render.compensationMode];
+			var layerCount = [1,[1,[1,2][ctx.demo]][ctx.process],server.settings.layerCount][render.compensationMode];
 			
 			// resize viewport
 			if(ctx.process == 1) {
@@ -239,7 +239,7 @@ var render = {
 				render.requiredSize = (fullscreen) ? fullscreenSize : render.preferredSize;
 			}
 			if(canvas.width != render.requiredSize[0]
-			|| canvas.height != render.requiredSize[1]) {
+			|| canvas.height != render.requiredSize[1]) { // update after resize
 				gl.bindFramebuffer(gl.FRAMEBUFFER,null);
 				gl.clearColor(0,0,0,1);
 				gl.clear(gl.COLOR_BUFFER_BIT);
@@ -253,7 +253,7 @@ var render = {
 					utils.forUpto(2,function(i) { // coords
 						render.blendWidth[i] = Math.floor(prepareBlendWidth * render.requiredSize[i]);
 						render.renderSize[i] = render.requiredSize[i] + render.blendWidth[i] * 2;
-						render.framebufferSize[i] = Math.pow(2,Math.ceil(Math.log(render.renderSize[i])/Math.log(2)));
+						render.framebufferSize[i] = Math.pow(2,Math.ceil(Math.log(render.renderSize[i]) / Math.log(2)));
 					});
 					render.panoramaSize = [Math.floor(render.framebufferSize[0] / 3),Math.floor(render.framebufferSize[1] / 2)];
 					render.fieldOfView = [
@@ -282,7 +282,8 @@ var render = {
 					utils.forUpto(server.pixels[1],function(i) { // pixel buffer count
 						server.pixels[0][i] = [];
 						utils.forUpto(server.settings.layerCount,function(j) { // compose layers
-							server.pixels[0][i][j] = new Uint8Array(render.framebufferSize[0] * render.framebufferSize[1] * 4);
+							var imageSize = (j == 0) ? render.framebufferSize : render.renderSize;
+							server.pixels[0][i][j] = new Uint8Array(imageSize[0] * imageSize[1] * 4);
 						});
 					});
 				}
@@ -296,7 +297,7 @@ var render = {
 				
 				if(!render.depthmapSize
 				|| client.frames[2].framebufferSize[0] != render.depthmapSize[0]
-				|| client.frames[2].framebufferSize[1] != render.depthmapSize[1]) {
+				|| client.frames[2].framebufferSize[1] != render.depthmapSize[1]) { // update after resize
 					render.depthmapSize = [client.frames[2].framebufferSize[0],client.frames[2].framebufferSize[1]];
 					gl.bindTexture(gl.TEXTURE_2D,depthmap.texture);
 					gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,render.framebufferSize[0],render.framebufferSize[1],0,gl.RGBA,gl.UNSIGNED_BYTE,null);
@@ -312,9 +313,11 @@ var render = {
 			// update textures & geometry per layer
 			geometry.selectGeometry(ctx,materials,groups,layers);
 			utils.forUpto(layerCount,function(i) { // compose layers
-				if(ctx.process == 1 && client.frames[3] != client.frames[2].time) { // load pixel buffers
+				if(ctx.process == 1 && client.frames[3] != client.frames[2].time) { // load pixel buffers after select
 					gl.bindTexture(gl.TEXTURE_2D,layers[i].texture);
-					gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,client.frames[2].framebufferSize[0],client.frames[2].framebufferSize[1],0,gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][client.frames[2].pixels][i]);
+					gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,client.frames[2].framebufferSize[0],client.frames[2].framebufferSize[1],0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+					var imageSize = (client.frames[2].compensationMode == 2 && i == 0) ? client.frames[2].framebufferSize : client.frames[2].renderSize;
+					gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,imageSize[0],imageSize[1],gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][client.frames[2].pixels][i]);
 				}
 				for(materialName in utils.extend(server.materials,["compose"])) {
 					if(layers[i].enableMaterials[materialName]) {
@@ -426,6 +429,7 @@ var render = {
 			gl.viewport(0,0,render.requiredSize[0],render.requiredSize[1]);
 			
 			// specific per process and compensation mode
+			gl.enable(gl.CULL_FACE);
 			[
 				[
 					function() {
@@ -514,7 +518,7 @@ var render = {
 							var i = 0;
 							var materialName = "compose";
 							gl.bindTexture(gl.TEXTURE_2D,layers[i].texture);
-							programs[0].draw(i,materialName);
+							//programs[0].draw(i,materialName);
 						}
 						{ // always
 							useProgram(1,[viewMatrices[1],viewMatrices[2]]);
@@ -533,6 +537,7 @@ var render = {
 					},
 				][render.compensationMode],
 			][ctx.process]();
+			gl.disable(gl.CULL_FACE);
 			
 			// store pixel buffers
 			if(ctx.process == 0) {
@@ -541,7 +546,8 @@ var render = {
 					server.pixels[2] = utils.incMod(server.pixels[2],server.pixels[1]);
 				utils.forUpto(layerCount,function(i) { // compose layers
 					gl.bindFramebuffer(gl.FRAMEBUFFER,layers[i].framebuffer);
-					gl.readPixels(0,0,render.framebufferSize[0],render.framebufferSize[1],gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][server.pixels[2]][i]);
+					var imageSize = (render.compensationMode == 2 && i == 0) ? render.framebufferSize : render.renderSize;
+					gl.readPixels(0,0,imageSize[0],imageSize[1],gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][server.pixels[2]][i]);
 				});
 			}
 		};

@@ -56,7 +56,7 @@ var utils = {
 	
 	vectorAbsolute: function(vec,dim) {
 		var dot = 0;
-		utils.forUpto(dim || vec.length,function(i) { // coords
+		utils.forUpto((dim || vec.length),function(i) { // coords
 			dot += vec[i] * vec[i];
 		});
 		return Math.sqrt(dot);

@@ -92,7 +92,7 @@ var client = {
 		} catch(e) {}
 	},
 	
-	frames: null, // received frames: list,length,selected,time
+	frames: null, // received frames: list,length,selected,time (update after select)
 	send_state: function(ctx) {
 		var msg = JSON.parse(JSON.stringify({
 			startCtr: ctx.startCtr,
@@ -109,7 +109,7 @@ var client = {
 	receive_frame: null,
 	register_receive_frame: function(ctx) {
 		client.receive_frame = function(msg) {
-			if(msg.startCtr != game.startCtr[ctx.process]
+			if(msg.startCtr != game.startCtr[0]
 			|| msg.requiredSize[0] != render.requiredSize[0]
 			|| msg.requiredSize[1] != render.requiredSize[1]
 			|| msg.compensationMode != render.compensationMode) // discard previous contexts and invalid properties
