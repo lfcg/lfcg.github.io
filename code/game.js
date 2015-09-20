@@ -25,6 +25,7 @@ var game = {
 		if(ctx.process == 0) {
 			server.requestFrame = true;
 			server.update = function() {};
+			server.geometry = null;
 			server.pixels = [[],0,0];
 			server.pixels[1] = Math.ceil((client.settings.bufferLength + server.settings.latency * 2) / 1000 * server.settings.framerate + 2);
 			// (buffer time + rtt latency) * server refresh rate per second + 2, round up

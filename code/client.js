@@ -92,7 +92,7 @@ var client = {
 		} catch(e) {}
 	},
 	
-	frames: null, // received frames: list,length,selected,time (update after select)
+	frames: null, // received frames: list,length,selected,time (load pixel buffers after select)
 	send_state: function(ctx) {
 		var msg = JSON.parse(JSON.stringify({
 			startCtr: ctx.startCtr,

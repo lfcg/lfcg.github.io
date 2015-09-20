@@ -21,8 +21,8 @@ var render = {
 	renderSize: null,      // requiredSize + blendWidth * 2
 	framebufferSize: null, // 2 ^ ceil(log(renderSize))
 	depthmapSize: null,    // framebufferSize (update after resize)
-	panoramaSize: null,    // w = framebufferSize.w / 3; h = framebufferSize.h / 2;
-	fieldOfView: null,     // renderSize, requiredSize
+	panoramaSize: null,    // w = renderSize.w / 3; h = renderSize.h / 2;
+	fieldOfView: null,     // atan(tan(fov) * (renderSize,requiredSize))
 	compensationMode: null,
 	slowmotionMode: null,
 	
@@ -44,7 +44,7 @@ var render = {
 		    },
 		*/};
 		var groups = [/*
-		    [[],[],null], // simplified,detailed,color
+		    [[],[],null,null,null], // simplified,detailed,color,model,materialName
 		*/];
 		var layers = [/*
 		    {
@@ -255,7 +255,7 @@ var render = {
 						render.renderSize[i] = render.requiredSize[i] + render.blendWidth[i] * 2;
 						render.framebufferSize[i] = Math.pow(2,Math.ceil(Math.log(render.renderSize[i]) / Math.log(2)));
 					});
-					render.panoramaSize = [Math.floor(render.framebufferSize[0] / 3),Math.floor(render.framebufferSize[1] / 2)];
+					render.panoramaSize = [Math.floor(render.renderSize[0] / 3),Math.floor(render.renderSize[1] / 2)];
 					render.fieldOfView = [
 						[Math.atan(tan * render.renderSize[0] / render.requiredSize[1]) * 2,Math.atan(tan * render.renderSize[1] / render.requiredSize[1]) * 2],
 						[Math.atan(tan * render.requiredSize[0] / render.requiredSize[1]) * 2,Math.atan(tan) * 2],
@@ -282,8 +282,7 @@ var render = {
 					utils.forUpto(server.pixels[1],function(i) { // pixel buffer count
 						server.pixels[0][i] = [];
 						utils.forUpto(server.settings.layerCount,function(j) { // compose layers
-							var imageSize = (j == 0) ? render.framebufferSize : render.renderSize;
-							server.pixels[0][i][j] = new Uint8Array(imageSize[0] * imageSize[1] * 4);
+							server.pixels[0][i][j] = new Uint8Array(render.renderSize[0] * render.renderSize[1] * 4);
 						});
 					});
 				}
@@ -298,7 +297,7 @@ var render = {
 				if(!render.depthmapSize
 				|| client.frames[2].framebufferSize[0] != render.depthmapSize[0]
 				|| client.frames[2].framebufferSize[1] != render.depthmapSize[1]) { // update after resize
-					render.depthmapSize = [client.frames[2].framebufferSize[0],client.frames[2].framebufferSize[1]];
+					render.depthmapSize = JSON.parse(JSON.stringify(client.frames[2].framebufferSize));
 					gl.bindTexture(gl.TEXTURE_2D,depthmap.texture);
 					gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,render.framebufferSize[0],render.framebufferSize[1],0,gl.RGBA,gl.UNSIGNED_BYTE,null);
 					gl.bindRenderbuffer(gl.RENDERBUFFER,depthmap.depthbuffer);
@@ -316,8 +315,7 @@ var render = {
 				if(ctx.process == 1 && client.frames[3] != client.frames[2].time) { // load pixel buffers after select
 					gl.bindTexture(gl.TEXTURE_2D,layers[i].texture);
 					gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,client.frames[2].framebufferSize[0],client.frames[2].framebufferSize[1],0,gl.RGBA,gl.UNSIGNED_BYTE,null);
-					var imageSize = (client.frames[2].compensationMode == 2 && i == 0) ? client.frames[2].framebufferSize : client.frames[2].renderSize;
-					gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,imageSize[0],imageSize[1],gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][client.frames[2].pixels][i]);
+					gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,client.frames[2].renderSize[0],client.frames[2].renderSize[1],gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][client.frames[2].pixels][i]);
 				}
 				for(materialName in utils.extend(server.materials,["compose"])) {
 					if(layers[i].enableMaterials[materialName]) {
@@ -362,29 +360,29 @@ var render = {
 			];
 			utils.forUpto(viewMatrices.length,function(i) { // view matrices
 				if(viewParameters[i][0]) {
-					utils.matrixProduct(viewMatrices[i],geometry.perspectiveMatrix(viewParameters[i][1]));        // #5 perspective
-					utils.matrixProduct(viewMatrices[i],geometry.coordinateMatrix);                               // #4 coordinate system
-					utils.matrixProduct(viewMatrices[i],geometry.rotateXMatrix(viewParameters[i][0].viewRot[1])); // #3 view pitch
-					utils.matrixProduct(viewMatrices[i],geometry.rotateZMatrix(viewParameters[i][0].viewRot[0])); // #2 view yaw
+					utils.matrixProduct(viewMatrices[i],geometry.perspectiveMatrix(viewParameters[i][1]));        // 5: perspective
+					utils.matrixProduct(viewMatrices[i],geometry.coordinateMatrix);                               // 4: coordinate system
+					utils.matrixProduct(viewMatrices[i],geometry.rotateXMatrix(viewParameters[i][0].viewRot[1])); // 3: view pitch
+					utils.matrixProduct(viewMatrices[i],geometry.rotateZMatrix(viewParameters[i][0].viewRot[0])); // 2: view yaw
 					if(viewParameters[i][2])
-						utils.matrixProduct(viewMatrices[i],geometry.translateMatrix(viewParameters[i][0].viewPos,-1)); // #1 view position
+						utils.matrixProduct(viewMatrices[i],geometry.translateMatrix(viewParameters[i][0].viewPos,-1)); // 1: view position
 				}
 			});
 			if(ctx.demo == 1) {
 				utils.forUpto(cartMatrices.length,function(i) { // cart matrices
 					if(cartParameters[i][0]) {
-						utils.matrixProduct(cartMatrices[i],geometry.translateMatrix(cartParameters[i][0].cartPos,1)); // #2 cart position
-						utils.matrixProduct(cartMatrices[i],geometry.rotateZMatrix(-cartParameters[i][0].cartRot));    // #1 cart rotation
+						utils.matrixProduct(cartMatrices[i],geometry.translateMatrix(cartParameters[i][0].cartPos,1)); // 2: cart position
+						utils.matrixProduct(cartMatrices[i],geometry.rotateZMatrix(-cartParameters[i][0].cartRot));    // 1: cart rotation
 					}
 				});
 			}
 			if(ctx.process == 0) {
 				utils.forUpto(6,function(i) { // panorama matrices
-					utils.matrixProduct(panoramaMatrices[i],geometry.perspectiveMatrix([utils.deg2rad(90),utils.deg2rad(90)])); // #5 perspective
-					utils.matrixProduct(panoramaMatrices[i],geometry.coordinateMatrix);                                         // #4 coordinate system
-					utils.matrixProduct(panoramaMatrices[i],geometry.rotateXMatrix(utils.deg2rad([0,0,0,0,90,-90][i])));        // #3 view pitch
-					utils.matrixProduct(panoramaMatrices[i],geometry.rotateZMatrix(utils.deg2rad([-90,90,180,0,0,0][i])));      // #2 view yaw
-					utils.matrixProduct(panoramaMatrices[i],geometry.translateMatrix(panoramaParameters[0][0].viewPos,-1));     // #1 view position
+					utils.matrixProduct(panoramaMatrices[i],geometry.perspectiveMatrix([utils.deg2rad(90),utils.deg2rad(90)])); // 5: perspective
+					utils.matrixProduct(panoramaMatrices[i],geometry.coordinateMatrix);                                         // 4: coordinate system
+					utils.matrixProduct(panoramaMatrices[i],geometry.rotateXMatrix(utils.deg2rad([0,0,0,0,90,-90][i])));        // 3: view pitch
+					utils.matrixProduct(panoramaMatrices[i],geometry.rotateZMatrix(utils.deg2rad([-90,90,180,0,0,0][i])));      // 2: view yaw
+					utils.matrixProduct(panoramaMatrices[i],geometry.translateMatrix(panoramaParameters[0][0].viewPos,-1));     // 1: view position
 				});
 			}
 			
@@ -546,8 +544,7 @@ var render = {
 					server.pixels[2] = utils.incMod(server.pixels[2],server.pixels[1]);
 				utils.forUpto(layerCount,function(i) { // compose layers
 					gl.bindFramebuffer(gl.FRAMEBUFFER,layers[i].framebuffer);
-					var imageSize = (render.compensationMode == 2 && i == 0) ? render.framebufferSize : render.renderSize;
-					gl.readPixels(0,0,imageSize[0],imageSize[1],gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][server.pixels[2]][i]);
+					gl.readPixels(0,0,render.renderSize[0],render.renderSize[1],gl.RGBA,gl.UNSIGNED_BYTE,server.pixels[0][server.pixels[2]][i]);
 				});
 			}
 		};

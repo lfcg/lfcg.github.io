@@ -122,6 +122,7 @@ var server = {
 	
 	requestFrame: null,
 	update: null,
+	geometry: null,
 	pixels: null, // pixel buffers, preallocated: list,length,cursor
 	receive_state: null,
 	register_receive_state: function(ctx) {
